@@ -1,39 +1,33 @@
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, render_template, request
 
-from emotion_detection import EmotionDetectionError, emotion_detector
+from EmotionDetection.emotion_detection import emotion_detector
 
 app = Flask(__name__)
 
 
-@app.get("/")
+@app.route("/")
 def index():
     return render_template("index.html")
 
 
-@app.post("/emotionDetector")
+@app.route("/emotionDetector")
 def detect_emotion():
-    data = request.get_json(silent=True) or {}
-    text = data.get("text", "")
+    text_to_analyze = request.args.get("textToAnalyze", "")
+    result = emotion_detector(text_to_analyze)
 
-    if not isinstance(text, str) or not text.strip():
-        return jsonify({"error": "Please provide non-empty text."}), 400
+    if result.get("dominant_emotion") is None:
+        return "Invalid input! Please try again."
 
-    try:
-        result = emotion_detector(text)
-    except EmotionDetectionError as exc:
-        return jsonify({"error": str(exc)}), 502
-
-    return jsonify(result)
-
-
-@app.errorhandler(404)
-def not_found(_error):
-    return jsonify({"error": "Resource not found."}), 404
-
-
-@app.errorhandler(405)
-def method_not_allowed(_error):
-    return jsonify({"error": "Method not allowed."}), 405
+    response = (
+        "For the given statement, the system response is "
+        f"'anger': {result['anger']}, "
+        f"'disgust': {result['disgust']}, "
+        f"'fear': {result['fear']}, "
+        f"'joy': {result['joy']} and "
+        f"'sadness': {result['sadness']}. "
+        f"The dominant emotion is {result['dominant_emotion']}."
+    )
+    return response
 
 
 if __name__ == "__main__":
