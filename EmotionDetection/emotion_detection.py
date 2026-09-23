@@ -13,29 +13,40 @@ WATSON_MODEL_ID = os.getenv(
 )
 
 
+def _empty_result() -> Dict[str, Any]:
+    return {
+        "anger": None,
+        "disgust": None,
+        "fear": None,
+        "joy": None,
+        "sadness": None,
+        "dominant_emotion": None,
+    }
+
+
 class EmotionDetectionError(RuntimeError):
     """Raised when the Watson emotion service cannot analyze the input."""
 
 
 def emotion_detector(text_to_analyze: str) -> Dict[str, Any]:
-    """Analyze text and return emotion scores with the dominant label."""
+    """Return Watson emotion scores and the dominant emotion."""
     if not isinstance(text_to_analyze, str) or not text_to_analyze.strip():
-        return {
-            "anger": None,
-            "disgust": None,
-            "fear": None,
-            "joy": None,
-            "sadness": None,
-            "dominant_emotion": None,
-        }
+        return _empty_result()
 
     headers = {"grpc-metadata-mm-model-id": WATSON_MODEL_ID}
     payload = {"raw_document": {"text": text_to_analyze}}
 
     try:
         response = requests.post(
-            WATSON_EMOTION_URL, json=payload, headers=headers, timeout=15
+            WATSON_EMOTION_URL,
+            json=payload,
+            headers=headers,
+            timeout=15,
         )
+
+        if response.status_code == 400:
+            return _empty_result()
+
         response.raise_for_status()
         result = response.json()
         emotions = result["emotionPredictions"][0]["emotion"]
